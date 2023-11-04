@@ -8,7 +8,7 @@ class Agent:
         self.learning_rate = learning_rate
         self.discount_factor = discount_factor
         self.exploration_rate = exploration_rate
-        self.exploration_decay = exploration_decay
+        self.exploration_decay = (min_exploration / exploration_rate) ** (1 / 50000000)
         self.min_exploration = min_exploration
         self.action_space_size = action_space_size
         self._initialize_q_table()
