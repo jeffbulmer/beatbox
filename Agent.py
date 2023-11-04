@@ -1,7 +1,7 @@
 import numpy as np
 import pickle
 from collections import defaultdict
-
+import random
 class Agent:
     def __init__(self, action_space_size, learning_rate=0.1, discount_factor=0.9, exploration_rate=1.0, exploration_decay=0.995, min_exploration=0.01):
         self.q_table = {}
@@ -40,12 +40,18 @@ class Agent:
         self.learning_rate = lr
 
     def get_action(self, state):
-        # Explore with probability exploration_rate, otherwise
+        # Explore with probability exploration_rate, otherwise exploit the best action
         if np.random.uniform(0, 1) < self.exploration_rate:
             return np.random.randint(0, self.action_space_size)
         else:
+            # Get Q values for all actions for the given state
             q_values = [self.q_table.get((state, a), 0) for a in range(self.action_space_size)]
-            return np.argmax(q_values)
+            # Find the maximum Q value
+            max_q_value = max(q_values)
+            # Find the actions that have the maximum Q value
+            max_actions = [action for action, q_value in enumerate(q_values) if q_value == max_q_value]
+            # Return a random action among those with the maximum Q value
+            return random.choice(max_actions)
 
     def update(self, state, action, reward, next_state):
         # Update the Q-value for the given state-action pair based on the reward received and the maximum Q-value for the next state

@@ -1,96 +1,135 @@
+from typing import Tuple
+
 import gym
 from gym import spaces
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
 from matplotlib.lines import Line2D
+import math
+
+
+def discretize_angle(angle, num_bins):
+    """Discretizes the angle into one of several bins."""
+    bin_size = 2 * math.pi / num_bins
+    # Normalize angle between 0 and 2*pi
+    normalized_angle = angle % (2 * math.pi)
+    # Find the bin index
+    bin_index = int(normalized_angle // bin_size)
+    return bin_index
+
+
+def discretize_distance(distance, bins):
+    """Discretizes the distance into one of several bins."""
+    for i, bin_edge in enumerate(bins):
+        if distance <= bin_edge:
+            return i
+    return len(bins)
+
+
+def angle_between_points(point1, point2):
+    # Unpack points
+    x1, y1 = point1
+    x2, y2 = point2
+
+    # Calculate the differences
+    dx = x2 - x1
+    dy = y2 - y1
+
+    # Calculate the angle
+    angle = math.atan2(dy, dx)
+
+    return angle
+
 
 class Environment(gym.Env):
     def __init__(self, grid_size=20):
         super(Environment, self).__init__()
-
+        self.num_angle_bins = 32
+        self.distance_bins = [1, 2, 3, 5, 10, 20]
         self.grid_size = grid_size
         self.action_space = spaces.Tuple([spaces.Discrete(9), spaces.Discrete(9)])
         self.observation_space = spaces.Tuple([spaces.Discrete(grid_size) for _ in range(6)])
         self.fig, self.ax = None, None
-        self.prev_distance_wolf_bunny = None
-        self.prev_distance_bunny_target = None
         self.reset()
 
     def reset(self):
-        self.wolf_pos = np.random.randint(0, self.grid_size, size=2)
-        self.bunny_pos = np.random.randint(0, self.grid_size, size=2)
-        self.location_pos = (10, 10)
-        self.prev_distance_wolf_bunny = self.manhattan_distance(self.wolf_pos, self.bunny_pos)
-        self.prev_distance_bunny_target = self.manhattan_distance(self.bunny_pos, self.location_pos)
+        self.wolf_pos = tuple(np.random.randint(0, self.grid_size, size=2))
+        self.bunny_pos = tuple(np.random.randint(0, self.grid_size, size=2))
+        self.location_pos = (9, 9)
+        while (self.wolf_pos == self.bunny_pos) or (self.bunny_pos == self.location_pos):
+                self.bunny_pos = tuple(np.random.randint(0, self.grid_size, size=2))
 
-        while (self.wolf_pos == self.bunny_pos).all() or (self.bunny_pos == self.location_pos).all():
-            self.bunny_pos = np.random.randint(0, self.grid_size, size=2)
+        return self.calculate_states(self.wolf_pos, self.bunny_pos)
 
-        return tuple(self.wolf_pos) + tuple(self.bunny_pos) + tuple(self.location_pos)
-
-    def update_position(self, pos, action):
+    def update_position(self, pos, action) -> Tuple[int, int]:
         x, y = pos
         if action == 1:
-            return x, max(0, y-1)
+            return x, max(0, y - 1)
         elif action == 2:
-            return x, min(self.grid_size-1, y+1)
+            return x, min(self.grid_size - 1, y + 1)
         elif action == 3:
-            return max(0, x-1), y
+            return max(0, x - 1), y
         elif action == 4:
-            return min(self.grid_size-1, x+1), y
+            return min(self.grid_size - 1, x + 1), y
         elif action == 5:
-            return max(0, x-1), max(0, y-1)
+            return max(0, x - 1), max(0, y - 1)
         elif action == 6:
-            return min(self.grid_size-1, x+1), max(0, y-1)
+            return min(self.grid_size - 1, x + 1), max(0, y - 1)
         elif action == 7:
-            return max(0, x-1), min(self.grid_size-1, y+1)
+            return max(0, x - 1), min(self.grid_size - 1, y + 1)
         elif action == 8:
-            return min(self.grid_size-1, x+1), min(self.grid_size-1, y+1)
+            return min(self.grid_size - 1, x + 1), min(self.grid_size - 1, y + 1)
         return x, y
 
-    def manhattan_distance(self, point1, point2):
-        return abs(point1[0] - point2[0]) + abs(point1[1] - point2[1])
+    def calculate_states(self, wolf_pos, bunny_pos):
+        # Discretize angles into 4 bins (up, down, left, right)
+        num_angle_bins = self.num_angle_bins
+        # Define distance bins (e.g., 0-5, 5-10, >10)
+        distance_bins = self.distance_bins
+
+        wolf_bunny_angle = angle_between_points(wolf_pos, bunny_pos)
+        wolf_bunny_distance = np.linalg.norm(np.array(wolf_pos) - np.array(bunny_pos))
+        wolf_carrot_angle = angle_between_points(wolf_pos, self.location_pos)
+        wolf_carrot_distance = np.linalg.norm(np.array(wolf_pos) - np.array(self.location_pos))
+
+        bunny_wolf_angle = angle_between_points(bunny_pos, wolf_pos)
+        bunny_wolf_distance = np.linalg.norm(np.array(bunny_pos) - np.array(wolf_pos))
+        bunny_carrot_angle = angle_between_points(bunny_pos, self.location_pos)
+        bunny_carrot_distance = np.linalg.norm(np.array(bunny_pos) - np.array(self.location_pos))
+
+        # Discretize both angles and distances
+        wolf_bunny = (discretize_angle(wolf_bunny_angle, num_angle_bins),
+                      discretize_distance(wolf_bunny_distance, distance_bins))
+        wolf_carrot = (discretize_angle(wolf_carrot_angle, num_angle_bins),
+                       discretize_distance(wolf_carrot_distance, distance_bins))
+        bunny_wolf = (discretize_angle(bunny_wolf_angle, num_angle_bins),
+                      discretize_distance(bunny_wolf_distance, distance_bins))
+        bunny_carrot = (discretize_angle(bunny_carrot_angle, num_angle_bins),
+                        discretize_distance(bunny_carrot_distance, distance_bins))
+
+        return (wolf_bunny, wolf_carrot), (bunny_wolf, bunny_carrot)
 
     def step(self, actions):
-        wolf_action, bunny_action = actions
+        # wolf, bunny
+        # action is (0-9, 0-9)
+        new_wolf_pos = self.update_position(self.wolf_pos, actions[0])
+        new_bunny_pos = self.update_position(self.bunny_pos, actions[1])
 
-        new_wolf_pos = self.update_position(self.wolf_pos, wolf_action)
-        new_bunny_pos = self.update_position(self.bunny_pos, bunny_action)
-        current_distance_wolf_bunny = self.manhattan_distance(new_wolf_pos, new_bunny_pos)
-        current_distance_bunny_target = self.manhattan_distance(new_bunny_pos, self.location_pos)
+        wolf_state, bunny_state = self.calculate_states(new_wolf_pos, new_bunny_pos)
 
-        # Default rewards
-        wolf_reward, bunny_reward = -1, -1
-
-        # Check if wolf is closer to the bunny than before
-        if current_distance_wolf_bunny < self.prev_distance_wolf_bunny:
-            wolf_reward += 5  # You can adjust the value of the reward as needed
-
-        # Check if bunny is closer to the carrot than before
-        if current_distance_bunny_target < self.prev_distance_bunny_target:
-            bunny_reward += 5  # You can adjust the value of the reward as needed
-
-        # Update positions
         self.wolf_pos = new_wolf_pos
+        rewards, done = self.calculate_rewards(new_wolf_pos, new_bunny_pos)
         self.bunny_pos = new_bunny_pos
+        states = (wolf_state, bunny_state)
+        return states, rewards, done
 
-        # Check end-game conditions
-        if self.wolf_pos == self.bunny_pos:
-            reward = (-100, 100)
-            done = True
-        elif self.bunny_pos == self.location_pos:
-            reward = (100, -100)
-            done = True
-        else:
-            reward = (wolf_reward, bunny_reward)
-            done = False
-
-        self.prev_distance_wolf_bunny = current_distance_wolf_bunny
-        self.prev_distance_bunny_target = current_distance_bunny_target
-
-        return tuple(new_wolf_pos) + tuple(new_bunny_pos) + tuple(self.location_pos), reward, done, {}
-
+    def calculate_rewards(self, wolf_pos, bunny_pos):
+        if bunny_pos == self.location_pos:
+            return (-100, 100), True
+        elif wolf_pos == bunny_pos:
+            return (100, -100), True
+        return (-1, -1), False
 
     def render(self, mode='human'):
         if mode == 'human':

@@ -21,15 +21,15 @@ def train_agent(start_episode, end_episode, counter, eps):
         while not done:
             wolf_action = wolf_agent_local.get_action(tuple(wolf_state))
             bunny_action = bunny_agent_local.get_action(tuple(bunny_state))
-            next_state, reward, done, _ = env_local.step((wolf_action, bunny_action))
-            next_wolf_state = next_state[:2]
-            next_bunny_state = next_state[2:4]
-            wolf_agent_local.update(tuple(wolf_state), wolf_action, reward[0], tuple(next_wolf_state))
-            bunny_agent_local.update(tuple(bunny_state), bunny_action, reward[1], tuple(next_bunny_state))
+            next_state, reward, done = env_local.step((wolf_action, bunny_action))
+            next_wolf_state = next_state[0]
+            next_bunny_state = next_state[1]
+            wolf_agent_local.update(wolf_state, wolf_action, reward[0], next_wolf_state)
+            bunny_agent_local.update(bunny_state, bunny_action, reward[1], next_bunny_state)
             wolf_state, bunny_state = next_wolf_state, next_bunny_state
 
         counter.value += 1
-        if counter.value % 100 == 0:
+        if counter.value % 50 == 0:
             print(f"Episode {counter.value}/{eps} completed!")
 
     return wolf_agent_local.q_table, bunny_agent_local.q_table
@@ -49,7 +49,7 @@ if __name__ == '__main__':
     wolf_agent = Agent(action_space_size=9)
     bunny_agent = Agent(action_space_size=9)
     wolf_agent.load('wolf_brain.npy')
-    bunny_agent.load('bunny_brain.npy')
+    bunny_agent.load('Old_bunny.npy')
 
     if args.train:
         num_processes = 4
@@ -84,8 +84,8 @@ if __name__ == '__main__':
         bunny_agent.save('bunny_brain.npy')
     else:
         print("No Brain")
-        wolf_agent.set_exploration_rate(0.1)
-        bunny_agent.set_exploration_rate(0.1)
+        wolf_agent.set_exploration_rate(0)
+        bunny_agent.set_exploration_rate(0)
     state = env.reset()
     done = False
     if args.render:
@@ -94,5 +94,5 @@ if __name__ == '__main__':
             bunny_state = state[2:4]
             wolf_action = wolf_agent.get_action(tuple(wolf_state))
             bunny_action = bunny_agent.get_action(tuple(bunny_state))
-            state, _, done, _ = env.step((wolf_action, bunny_action))
+            state, _, done = env.step((wolf_action, bunny_action))
             env.render()

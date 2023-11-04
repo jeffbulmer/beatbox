@@ -1,50 +1,54 @@
-
 import numpy as np
 import matplotlib.pyplot as plt
+import pickle
 from Agent import Agent
 
-def plot_q_values_for_fixed_positions(q_table, fixed_positions, agent_name, ax):
-    """
-    Plot Q-values for a fixed bunny and destination position for the given agent.
-    """
-    max_q_values = np.zeros((20, 20))
+# Load the agent from file
+agent = Agent(action_space_size=9)
+agent.load('wolf_brain.npy')
+q_table = agent.q_table
 
-    for i in range(20):
-        for j in range(20):
-            key = ((i, j),) + tuple(fixed_positions)
-            if key in q_table:
-                max_q_values[i, j] = np.max(q_table[key])
+# Check if Q-table is not empty
+if not q_table:
+    raise ValueError("The Q-table is empty. Cannot visualize an empty Q-table.")
 
-    # Plot heatmap
-    im = ax.imshow(max_q_values, cmap='viridis', origin='upper', interpolation='nearest')
+# Extract all unique states and actions from the Q-table keys
+states = set()
+actions = set()
+for (state, action), _ in q_table.items():
+    states.add(state)
+    actions.add(action)
 
-    # Add a colorbar for the heatmap scale reference
-    plt.colorbar(im, ax=ax, orientation='vertical')
+# Create mappings from states and actions to indices
+state_to_index = {state: index for index, state in enumerate(sorted(states))}
+action_to_index = {action: index for index, action in enumerate(sorted(actions))}
 
-    # Mark fixed positions
-    ax.plot(fixed_positions[1][1], fixed_positions[1][0], 'rX', markersize=10) # destination
-    ax.plot(fixed_positions[0][1], fixed_positions[0][0], 'bX', markersize=10) # bunny
+# Initialize an array for the Q-table
+state_space_size = len(state_to_index)
+action_space_size = len(action_to_index)
+q_table_array = np.full((state_space_size, action_space_size), np.nan)
 
-    ax.set_title(f'{agent_name} Q-values')
-    ax.set_xlabel('X position')
-    ax.set_ylabel('Y position')
+# Populate the array
+for (state, action), value in q_table.items():
+    state_index = state_to_index[state]
+    action_index = action_to_index[action]
+    q_table_array[state_index, action_index] = value
 
-if __name__ == "__main__":
-    wolf_agent = Agent(action_space_size=9)
-    bunny_agent = Agent(action_space_size=9)
-    wolf_agent.load('wolf_brain.npy')
-    bunny_agent.load('bunny_brain.npy')
+# Replace nan values with zeros or the global minimum, depending on how you want to handle them
+q_table_array = np.nan_to_num(q_table_array, nan=np.nanmin(q_table_array))
 
-    wolf_agent_q_table = wolf_agent.q_table
-    bunny_agent_q_table = bunny_agent.q_table
+# Normalize the Q-table values to make it easier to visualize
+min_q_value = np.min(q_table_array[np.nonzero(q_table_array)])
+normalized_q_table = (q_table_array - min_q_value) / (np.max(q_table_array) - min_q_value)
 
-    bunny_position = (10, 10)  # Fixed bunny position
-    destination_position = (15, 15)  # Fixed escape location
-
-    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(14, 6))
-
-    plot_q_values_for_fixed_positions(wolf_agent_q_table, [bunny_position, destination_position], "Wolf", ax1)
-    plot_q_values_for_fixed_positions(bunny_agent_q_table, [bunny_position, destination_position], "Bunny", ax2)
-
-    plt.tight_layout()
+def plot_q_table_heatmap(q_table, title):
+    # Plotting the heatmap
+    plt.figure(figsize=(10, 10))
+    plt.title(title)
+    plt.xlabel('Actions')
+    plt.ylabel('States')
+    plt.imshow(q_table, aspect='auto', cmap='viridis')
+    plt.colorbar()
     plt.show()
+
+plot_q_table_heatmap(normalized_q_table, 'Q-Table Heatmap for Wolf and Bunny')
