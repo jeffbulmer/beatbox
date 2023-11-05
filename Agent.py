@@ -3,12 +3,12 @@ import pickle
 from collections import defaultdict
 import random
 class Agent:
-    def __init__(self, action_space_size, learning_rate=0.1, discount_factor=0.9, exploration_rate=1.0, exploration_decay=0.995, min_exploration=0.01):
+    def __init__(self, action_space_size, learning_rate=0.1, discount_factor=0.9, exploration_rate=1.0, exploration_decay=0.995, min_exploration=0.01, eps=1000):
         self.q_table = {}
         self.learning_rate = learning_rate
         self.discount_factor = discount_factor
         self.exploration_rate = exploration_rate
-        self.exploration_decay = (min_exploration / exploration_rate) ** (1 / 50000000)
+        self.exploration_decay = (min_exploration / exploration_rate) ** (1 / eps)
         self.min_exploration = min_exploration
         self.action_space_size = action_space_size
         self._initialize_q_table()

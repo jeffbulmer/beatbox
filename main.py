@@ -90,8 +90,8 @@ if __name__ == '__main__':
     done = False
     if args.render:
         while not done:
-            wolf_state = state[:2]
-            bunny_state = state[2:4]
+            wolf_state = state[0]
+            bunny_state = state[1]
             wolf_action = wolf_agent.get_action(tuple(wolf_state))
             bunny_action = bunny_agent.get_action(tuple(bunny_state))
             state, _, done = env.step((wolf_action, bunny_action))

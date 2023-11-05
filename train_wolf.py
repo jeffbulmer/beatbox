@@ -3,40 +3,35 @@ from WolfEnvironment import WolfEnvironment
 import argparse
 import multiprocessing
 from collections import defaultdict
+import time
 
-def train_wolf_agent(start_episode, end_episode, counter, eps):
+from utils import (
+update_progress_bar,
+combine_q_tables
+)
+
+def train_wolf_agent(agent, start_episode, end_episode, counter, eps):
     env_local = WolfEnvironment(grid_size=20)
-    wolf_agent_local = Agent(action_space_size=env_local.action_space_size)
-    wolf_agent_local.load('wolf_brain.npy')
-
+    increment = eps / 100
     for episode in range(start_episode, end_episode):
         state = env_local.reset()
         done = False
 
         while not done:
-            action = wolf_agent_local.get_action(state)
+            action = agent.get_action(state)
             next_state, reward, done = env_local.step(action)
-            wolf_agent_local.update(state, action, reward, next_state)
+            agent.update(state, action, reward, next_state[0])
             state = next_state
 
         counter.value += 1
-        if counter.value % 50 == 0:
-            print(f"Episode {counter.value}/{eps} completed!")
-
-    return wolf_agent_local.q_table
-
-def combine_q_tables(results):
-    combined_q_table = defaultdict(float)
-    for q_table in results:
-        for key, value in q_table.items():
-            combined_q_table[key] += value
-    for key in combined_q_table:
-        combined_q_table[key] /= len(results)
-    return combined_q_table
+        if counter.value % increment == 0:
+            update_progress_bar(counter.value, eps)
+    return agent.q_table
 
 # ... [other imports and train_wolf_agent function] ...
 
 if __name__ == '__main__':
+    start_time = time.time()
     multiprocessing.freeze_support()
 
     # Set up argument parser
@@ -55,11 +50,12 @@ if __name__ == '__main__':
     # Initialize the environment to get the action space size
     env = WolfEnvironment(grid_size=20)
     action_space_size = env.action_space_size
-
+    wolf_agent = Agent(action_space_size=action_space_size, eps = args.eps)
+    wolf_agent.load('wolf_brain.npy')
     # Use multiprocessing pool to train agents in parallel
     with multiprocessing.Pool(num_processes) as pool:
         ranges = [(i * episodes_per_process, (i+1) * episodes_per_process) for i in range(num_processes)]
-        args_for_train_wolf_agent = [(start, end, counter, args.eps) for start, end in ranges]
+        args_for_train_wolf_agent = [(wolf_agent, start, end, counter, args.eps) for start, end in ranges]
         results = pool.starmap(train_wolf_agent, args_for_train_wolf_agent)
 
     # Combine the Q-tables from all processes
@@ -71,3 +67,7 @@ if __name__ == '__main__':
 
     # Save the combined Q-table to file
     wolf_agent.save('wolf_brain.npy')
+    end_time = time.time()
+    elapsed_time = end_time - start_time
+    print(f"The script took {elapsed_time / 60.0} minutes to run.")
+

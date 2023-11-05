@@ -2,10 +2,13 @@ import numpy as np
 import matplotlib.pyplot as plt
 import pickle
 from Agent import Agent
-
+import argparse
+parser = argparse.ArgumentParser(description="Q-learning agents: Wolf and Bunny")
+parser.add_argument('--brain', type=str, default='wolf_brain.npy', help="brain")
+args = parser.parse_args()
 # Load the agent from file
 agent = Agent(action_space_size=9)
-agent.load('wolf_brain.npy')
+agent.load(args.brain)
 q_table = agent.q_table
 
 # Check if Q-table is not empty

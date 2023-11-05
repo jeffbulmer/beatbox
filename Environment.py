@@ -1,5 +1,4 @@
 from typing import Tuple
-
 import gym
 from gym import spaces
 import numpy as np
@@ -8,45 +7,17 @@ import matplotlib.animation as animation
 from matplotlib.lines import Line2D
 import math
 
-
-def discretize_angle(angle, num_bins):
-    """Discretizes the angle into one of several bins."""
-    bin_size = 2 * math.pi / num_bins
-    # Normalize angle between 0 and 2*pi
-    normalized_angle = angle % (2 * math.pi)
-    # Find the bin index
-    bin_index = int(normalized_angle // bin_size)
-    return bin_index
-
-
-def discretize_distance(distance, bins):
-    """Discretizes the distance into one of several bins."""
-    for i, bin_edge in enumerate(bins):
-        if distance <= bin_edge:
-            return i
-    return len(bins)
-
-
-def angle_between_points(point1, point2):
-    # Unpack points
-    x1, y1 = point1
-    x2, y2 = point2
-
-    # Calculate the differences
-    dx = x2 - x1
-    dy = y2 - y1
-
-    # Calculate the angle
-    angle = math.atan2(dy, dx)
-
-    return angle
-
+from utils import (
+    discretize_distance,
+    discretize_angle,
+    angle_between_points
+)
 
 class Environment(gym.Env):
     def __init__(self, grid_size=20):
         super(Environment, self).__init__()
         self.num_angle_bins = 32
-        self.distance_bins = [1, 2, 3, 5, 10, 20]
+        self.distance_bins = [1, 2, 3, 5, 10, 20, 40]
         self.grid_size = grid_size
         self.action_space = spaces.Tuple([spaces.Discrete(9), spaces.Discrete(9)])
         self.observation_space = spaces.Tuple([spaces.Discrete(grid_size) for _ in range(6)])

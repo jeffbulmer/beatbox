@@ -3,32 +3,17 @@ import numpy as np
 from gym import spaces
 from Environment import Environment
 import random
-
-def discretize_angle(angle, num_bins):
-    bin_size = 2 * math.pi / num_bins
-    normalized_angle = angle % (2 * math.pi)
-    bin_index = int(normalized_angle // bin_size)
-    return bin_index
-
-def discretize_distance(distance, bins):
-    for i, bin_edge in enumerate(bins):
-        if distance <= bin_edge:
-            return i
-    return len(bins)
-
-def angle_between_points(point1, point2):
-    x1, y1 = point1
-    x2, y2 = point2
-    dx = x2 - x1
-    dy = y2 - y1
-    angle = math.atan2(dy, dx)
-    return angle
+from utils import (
+    discretize_distance,
+    discretize_angle,
+    angle_between_points
+)
 
 class WolfEnvironment(Environment):
     def __init__(self, grid_size=20):
         super(WolfEnvironment, self).__init__(grid_size)
         self.num_angle_bins = 32
-        self.distance_bins = [1, 2, 3, 5, 10, 20]
+        self.distance_bins = [1, 2, 3, 5, 10, 20, 40]
         self.action_space_size = 9
         self.location_pos = (9,9)
         self.action_space = spaces.Discrete(9)
